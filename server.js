@@ -1,5 +1,20 @@
 import { ApolloServer, gql } from "apollo-server";
 
+const tweets = [
+    {
+        id: "1",
+        message: "first tweet"
+    },
+    {
+        id: "2",
+        message: "second tweet"
+    },
+    {
+        id: "3",
+        message: "third tweet"
+    }
+]
+
 /**
  * schema definition language.
  * explain the data shape.
@@ -15,7 +30,7 @@ const typeDefs = gql`
     type Tweet {
         id: ID!
         message: String!
-        author: User!
+        author: User
     }
     type Query {
         allTweet: [Tweet!]!
@@ -26,7 +41,18 @@ const typeDefs = gql`
         deleteTweet(id: ID!): Boolean!
     }
 `
-const server = new ApolloServer({typeDefs})
+
+const resolvers = {
+    Query: {
+        allTweet() { return tweets },
+        tweet(root, args) {
+            console.log(root, args)
+            return tweets.find(tweet => tweet.id === args.id)
+        }
+    }
+}
+
+const server = new ApolloServer({typeDefs, resolvers})
 
 server.listen()
 .then(({url}) => {
