@@ -1,18 +1,37 @@
 import { ApolloServer, gql } from "apollo-server";
+import fetch from "node-fetch"
 
 const tweets = [
     {
         id: "1",
-        message: "first tweet"
+        message: "first tweet",
+        userId: "2"
     },
     {
         id: "2",
-        message: "second tweet"
+        message: "second tweet",
+        userId: "1"
     },
     {
         id: "3",
-        message: "third tweet"
+        message: "third tweet",
+        userId: "1"
     }
+]
+
+const users = [
+    {
+        id: "1",
+        // username: null,
+        firstName: "as",
+        lastName: "d"
+    },
+    {
+        id: "2",
+        username: null,
+        firstName: "qw",
+        lastName: "e"
+    },
 ]
 
 /**
@@ -21,11 +40,34 @@ const tweets = [
  * (``) must be used.
  */
 const typeDefs = gql`
+    type Movie {
+        id: Int!
+        url: String!
+        imdb_code: String!
+        title: String!
+        title_english: String!
+        title_long: String!
+        slug: String!
+        year: Int!
+        rating: Float!
+        runtime: Float!
+        genres: [String]!
+        summary: String!
+        description_full: String!
+        synopsis: String
+        yt_trailer_code: String!
+        language: String!
+        background_image: String!
+        background_image_original: String!
+        small_cover_image: String!
+        medium_cover_image: String!
+        large_cover_image: String!
+    }
     type User {
         id: ID!
         username: String!
         firstName: String!
-        lastName: String
+        lastName: String!
     }
     type Tweet {
         id: ID!
@@ -33,8 +75,11 @@ const typeDefs = gql`
         author: User
     }
     type Query {
+        allMovie: [Movie!]!
+        movie(id: ID!): Movie
         allTweet: [Tweet!]!
         tweet(id: ID!): Tweet
+        allUser: [User!]!
     }
     type Mutation {
         postTweet(message: String!, userId: ID!): Tweet!
@@ -44,17 +89,35 @@ const typeDefs = gql`
 
 const resolvers = {
     Query: {
+        allMovie() {
+            console.log("allMovie info")
+            return fetch("https://yts.mx/api/v2/list_movies.json")
+            .then(res => res.json())
+            .then(res => res.data.movies)
+        },
+        movie(_, {id}) {
+            console.log(id, "movie info")
+            if(!id) throw new Error("missing argument 'id'")
+            return fetch(`https://yts.mx/api/v2/movie_details.json?movie_id=${id}`)
+            .then(res => res.json())
+            .then(res => res.data.movie)
+        },
         allTweet() { return tweets },
         tweet(root, args) {
-            console.log(root, args)
             return tweets.find(tweet => tweet.id === args.id)
+        },
+        allUser() { 
+            console.log("allUser called")
+            return users 
         }
     },
     Mutation: {
         postTweet(_, {message, userId}) {
+            if(!userCheck(userId)) throw new Error("존재하지 않는 유저")
             const newTweet = {
                 id: tweets.length + 1,
-                message
+                message,
+                userId
             }
             tweets.push(newTweet)
             return newTweet
@@ -67,7 +130,22 @@ const resolvers = {
             });
             return true
         }
+    },
+    User: {
+        username(root, args) {
+            console.log("username called")
+            return `${root.firstName}${root.lastName}`
+        }
+    },
+    Tweet: {
+        author({userId}) {
+            return users.find(user => user.id === userId)
+        }
     }
+}
+
+function userCheck(userId) {
+    return users.find(user => user.id === userId)
 }
 
 const server = new ApolloServer({typeDefs, resolvers})
